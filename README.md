@@ -1,5 +1,5 @@
-简书地址：https://www.jianshu.com/p/c68e08069460
-GitHUb地址：https://github.com/aguai1/AndroidGradleEncrypt
+### 简书地址：https://www.jianshu.com/p/c68e08069460
+### GitHUb地址：https://github.com/aguai1/AndroidGradleEncrypt
 
 #### 本文将介绍android studio利用gradle进行raw资源文件加密的一种方式（所有代码均写在build.gradle中）：
 ####
