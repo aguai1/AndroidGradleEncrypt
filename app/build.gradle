@@ -1,0 +1,228 @@
+import javax.crypto.BadPaddingException
+import javax.crypto.Cipher
+import javax.crypto.IllegalBlockSizeException
+import javax.crypto.NoSuchPaddingException
+import javax.crypto.spec.SecretKeySpec
+import java.security.InvalidKeyException
+import java.security.NoSuchAlgorithmException
+
+apply plugin: 'com.android.application'
+
+def rawDir ='./app/src/main/res/raw/'
+def tempDir ='./tempDir'
+def aesKey = "\"abcdefgabcdefg12\""
+def aesKeyCommen = "abcdefgabcdefg12"
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.2"
+
+    defaultConfig {
+        applicationId "com.aimall.myapplication"
+        minSdkVersion 19
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+        buildConfigField "String", "AES_KEY",aesKey
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+}
+
+
+void copyFolder(String oldPath, String newPath) {
+    try {
+        (new File(newPath)).mkdirs() //如果文件夹不存在 则建立新文件夹
+        File a = new File(oldPath)
+        String[] file = a.list()
+        File temp = null
+        for (int i = 0; i < file.length; i++) {
+            if (oldPath.endsWith(File.separator)) {
+                temp = new File(oldPath + file[i])
+            } else {
+                temp = new File(oldPath + File.separator + file[i])
+            }
+            if (temp.isFile()) {
+                FileInputStream input = new FileInputStream(temp)
+                FileOutputStream output = new FileOutputStream(newPath + "/" +
+                        (temp.getName()).toString())
+                byte[] b = new byte[1024 * 5]
+                int len
+                while ((len = input.read(b)) != -1) {
+                    output.write(b, 0, len)
+                }
+                output.flush()
+                output.close()
+                input.close()
+            }
+            if (temp.isDirectory()) {//如果是子文件夹
+                copyFolder(oldPath + "/" + file[i], newPath + "/" + file[i])
+            }
+        }
+    }
+    catch (Exception e) {
+        println("复制整个文件夹内容操作出错")
+        e.printStackTrace()
+    }
+}
+
+void deleteAllFilesOfDir(String path) {
+    File file=new File(path)
+    if (!file.exists())
+        return
+    if (file.isFile()) {
+        file.delete()
+        return
+    }
+    File[] files = file.listFiles()
+    for (int i = 0; i < files.length; i++) {
+        deleteAllFilesOfDir(files[i].getAbsolutePath())
+    }
+    file.delete()
+}
+
+
+
+private static byte[] encrypt(byte[] content, String password) {
+    try {
+        byte[] keyStr = password.getBytes()
+        SecretKeySpec key = new SecretKeySpec(keyStr, "AES")
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")//algorithmStr
+        cipher.init(Cipher.ENCRYPT_MODE, key)//   ʼ
+        byte[] result = cipher.doFinal(content)
+        return result //
+    } catch (NoSuchAlgorithmException e) {
+        e.printStackTrace()
+    } catch (NoSuchPaddingException e) {
+        e.printStackTrace()
+    } catch (InvalidKeyException e) {
+        e.printStackTrace()
+    } catch (UnsupportedEncodingException e) {
+        e.printStackTrace()
+    } catch (IllegalBlockSizeException e) {
+        e.printStackTrace()
+    } catch (BadPaddingException e) {
+        e.printStackTrace()
+    }
+    return null
+}
+
+private static byte[] decrypt(byte[] content, String password) {
+    try {
+        byte[] keyStr = password.getBytes()
+        SecretKeySpec key = new SecretKeySpec(keyStr, "AES")
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")//algorithmStr
+        cipher.init(Cipher.DECRYPT_MODE, key)//   ʼ
+        byte[] result = cipher.doFinal(content)
+        return result //
+    } catch (NoSuchAlgorithmException e) {
+        e.printStackTrace()
+    } catch (NoSuchPaddingException e) {
+        e.printStackTrace()
+    } catch (InvalidKeyException e) {
+        e.printStackTrace()
+    } catch (IllegalBlockSizeException e) {
+        e.printStackTrace()
+    } catch (BadPaddingException e) {
+        e.printStackTrace()
+    }
+    return null
+}
+
+
+/**
+ * 获得指定文件的byte数组
+ */
+static byte[] file2bytes(String filePath) {
+    byte[] buffer = null;
+    try {
+        File file = new File(filePath);
+        FileInputStream fis = new FileInputStream(file);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
+        byte[] b = new byte[1024];
+        int n;
+        while ((n = fis.read(b)) != -1) {
+            bos.write(b, 0, n);
+        }
+        fis.close();
+        bos.close();
+        buffer = bos.toByteArray();
+    } catch (FileNotFoundException e) {
+        e.printStackTrace();
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+    return buffer;
+}
+
+
+void encodeDir(String rawDir, String aesKey){
+    println "do 加密代码"
+    File searchPlug = new File(rawDir)
+    if (searchPlug.exists() && searchPlug.isDirectory()) {
+        print "文件夹存在"
+        File[] files = searchPlug.listFiles()
+        for (File file : files) {
+//            if(!file.name.endsWith(".glsl")){
+//                continue
+//            }
+            def data= file2bytes(file.getAbsolutePath())
+            def content = encrypt(data, aesKey)
+            def stream = file.newOutputStream()
+            stream.write(content)
+            stream.flush()
+        }
+    }
+}
+
+
+gradle.addBuildListener(new BuildListener() {
+    @Override
+    void buildStarted(Gradle gradle) {
+        println "buildStarted"
+    }
+
+    @Override
+    void settingsEvaluated(Settings settings) {
+        println "settingsEvaluated"
+
+    }
+
+    @Override
+    void projectsLoaded(Gradle gradle) {
+        println "projectsLoaded"
+
+    }
+
+    @Override
+    void projectsEvaluated(Gradle gradle) {
+        println "projectsEvaluated"
+        //先复制加密前文件夹
+        copyFolder(rawDir,tempDir)
+        encodeDir(rawDir,aesKeyCommen)
+    }
+    @Override
+    void buildFinished(BuildResult buildResult) {
+        //apk打包成功后回滚文件夹
+        copyFolder(tempDir,rawDir)
+        deleteAllFilesOfDir(tempDir)
+    }
+})
